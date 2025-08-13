@@ -1,68 +1,114 @@
-name: Update Links Cache
+name: Update Links Cache (CSV only)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:         # allow manual run
   schedule:
-    - cron: "0 */2 * * *"  # every 2 hours
+    - cron: "0 */2 * * *"    # every 2 hours
 
 permissions:
   contents: write
 
 env:
-  SHEET_GVIZ_URL: "https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/gviz/tq?tqx=out:json"
-  SHEET_CSV_URL:  "https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/export?format=csv"
+  # ✅ CSV export URL for your sheet (add gid=... if your data is not on the first tab)
+  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/export?format=csv"
 
 jobs:
   update-cache:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Fetch GViz JSON
-        id: gviz
+      - name: Fetch CSV from Google Sheets
+        id: fetch
         run: |
-          curl -sS "$SHEET_GVIZ_URL" -o /tmp/sheet.json
-          if grep -q "google.visualization.Query.setResponse" /tmp/sheet.json; then
-            echo "ok=true" >> $GITHUB_OUTPUT
+          set -e
+          echo "Downloading CSV from: $SHEET_CSV_URL"
+          curl -sSL "$SHEET_CSV_URL" -o /tmp/sheet.csv
+          echo "==== First 5 lines of downloaded CSV (for debugging) ===="
+          head -n 5 /tmp/sheet.csv || true
+          echo "==== File size (bytes) ===="
+          wc -c /tmp/sheet.csv
+
+      - name: Convert CSV → JSON (robust parser)
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+
+          // Read CSV text
+          const csv = fs.readFileSync('/tmp/sheet.csv', 'utf8').replace(/\r/g, '').trim();
+          if (!csv) {
+            console.error('Downloaded CSV is empty.');
+            process.exit(1);
+          }
+
+          // CSV parser that handles quotes and commas within quotes
+          function parseCSV(text) {
+            const rows = [];
+            let i = 0, field = '', row = [], inQuotes = false;
+            while (i < text.length) {
+              const c = text[i];
+              if (inQuotes) {
+                if (c === '"') {
+                  if (text[i+1] === '"') { field += '"'; i += 2; continue; }
+                  inQuotes = false; i++; continue;
+                } else {
+                  field += c; i++; continue;
+                }
+              } else {
+                if (c === '"') { inQuotes = true; i++; continue; }
+                if (c === ',') { row.push(field.trim()); field = ''; i++; continue; }
+                if (c === '\n') { row.push(field.trim()); rows.push(row); row = []; field = ''; i++; continue; }
+                field += c; i++; continue;
+              }
+            }
+            row.push(field.trim());
+            rows.push(row);
+            return rows;
+          }
+
+          const rows = parseCSV(csv);
+          if (!rows.length) {
+            console.error('No rows parsed from CSV.');
+            process.exit(1);
+          }
+
+          // Expect headers: Text, URL (case-insensitive, tolerate extra spaces)
+          const header = rows[0].map(h => h.toLowerCase().trim());
+          const idxText = header.findIndex(h => h === 'text');
+          const idxURL  = header.findIndex(h => h === 'url');
+          if (idxText === -1 || idxURL === -1) {
+            console.error('Header row must contain "Text" and "URL". Found:', header);
+            process.exit(1);
+          }
+
+          const data = rows.slice(1)
+            .map(r => {
+              const label = (r[idxText] || '').trim();
+              const url   = (r[idxURL]  || '').trim();
+              return (label && url) ? { label, url } : null;
+            })
+            .filter(Boolean);
+
+          if (!data.length) {
+            console.error('Parsed 0 valid rows (no label+url pairs). Check your sheet data.');
+            process.exit(1);
+          }
+
+          // Ensure /links exists and write JSON
+          fs.mkdirSync('links', { recursive: true });
+          fs.writeFileSync('links/links-cache.json', JSON.stringify(data, null, 2));
+          console.log('Wrote links/links-cache.json with', data.length, 'items');
+          NODE
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet links/links-cache.json; then
+            echo "No changes to commit."
           else
-            echo "ok=false" >> $GITHUB_OUTPUT
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add links/links-cache.json
+            git commit -m "Update links cache from Google Sheets (CSV)"
+            git push
           fi
-
-      - name: Parse GViz JSON
-        if: steps.gviz.outputs.ok == 'true'
-        run: |
-          node <<'EOF'
-          const fs = require('fs');
-          const raw = fs.readFileSync('/tmp/sheet.json', 'utf8');
-          const jsonText = raw.match(/setResponse\((.*)\);/s)[1];
-          const data = JSON.parse(jsonText).table.rows
-            .map(r => ({ label: r.c[0]?.v || '', url: r.c[1]?.v || '' }))
-            .filter(r => r.label && r.url);
-          fs.writeFileSync('links/links-cache.json', JSON.stringify(data, null, 2));
-          EOF
-
-      - name: Fallback fetch CSV
-        if: steps.gviz.outputs.ok != 'true'
-        run: |
-          curl -sS "$SHEET_CSV_URL" -o /tmp/sheet.csv
-
-      - name: Parse CSV to JSON
-        if: steps.gviz.outputs.ok != 'true'
-        run: |
-          node <<'EOF'
-          const fs = require('fs');
-          const rows = fs.readFileSync('/tmp/sheet.csv', 'utf8')
-            .split('\n').map(r => r.split(',').map(c => c.trim()));
-          const data = rows.slice(1) // skip header
-            .map(r => ({ label: r[0], url: r[1] }))
-            .filter(r => r.label && r.url);
-          fs.writeFileSync('links/links-cache.json', JSON.stringify(data, null, 2));
-          EOF
-
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add links/links-cache.json
-          git commit -m "Update links cache" || echo "No changes"
-          git push
