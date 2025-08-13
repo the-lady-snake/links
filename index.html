@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Lady Snake — Terminal Links</title>
+<meta name="theme-color" content="#000000">
+<style>
+  :root{
+    --bg:#000;
+    --text:#86e68c;      /* terminal green */
+    --text-dim:#2fbf44;  /* dimmer green */
+    --accent:#c9ffc9;    /* brighter */
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  html,body{height:100%;margin:0;background:#000;color:var(--text);font:16px/1.5 var(--mono);overflow:hidden}
+
+  /* 1) Matrix rain at the very back */
+  #matrix{
+    position:fixed; inset:0; z-index:0;
+    background:radial-gradient(ellipse at 50% 20%, #07150a 0%, #020403 55%, #000 100%);
+  }
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:0;mix-blend-mode:multiply}
+
+  /* 2) Snake above rain, below links (so rain disappears behind it) */
+  .snake-logo{
+    filter: drop-shadow(0 0 4px rgba(134, 230, 140, 0.3));
+    opacity: 0.8; /* Remove this if snake is too light */
+    position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(0.95); /* 5% smaller */
+    transform-origin:center;
+    z-index:1;                 /* <-- sits between rain and links */
+    pointer-events:none;       /* links remain clickable */
+    width:auto; height:auto;
+    max-width:80vw; max-height:80vh; /* mobile friendly, with space around */
+    image-rendering:auto;
+    opacity:1;                 /* ensure fully opaque black */
+    filter:none;               /* no colourisation */
+  }
+
+  /* 3) Links on top */
+  .term{position:relative; z-index:2; max-width:900px; margin:auto; padding:40px 20px 80px}
+  .prompt{color:var(--accent);text-shadow:0 0 6px #0f0}
+  .muted{color:#6fae72}
+
+  /* Link list (dropdown-style cascade) */
+  .links{margin:14px 0 0 0; list-style:none; padding:0}
+  .cmd{display:flex; gap:.6rem; margin:10px 0; line-height:1.7; opacity:0; transform:translateY(-12px)}
+  .cmd .arrow{color:var(--text)}
+  .cmd a{color:var(--accent); text-decoration:none}
+  .cmd a:hover{filter:brightness(115%)}
+  /*.in{animation:drop .88s cubic-bezier(.2,.8,.2,1) forwards}
+  @keyframes drop{ to{opacity:1; transform:translateY(0)} } */
+  /*.in{animation:dropStep 0.9s steps(5,end) forwards}
+@keyframes dropStep{
+  from{opacity:0; transform:translateY(-16px)}
+  to  {opacity:1; transform:translateY(0)}
+}*/
+  .in{animation:fadeRow 0.5s ease-out forwards}
+  @keyframes fadeRow{
+    from{opacity:0}
+    to  {opacity:1}
+  }
+  .caret{display:inline-block;width:9px;height:1.1em;vertical-align:-.15em;background:var(--accent);box-shadow:0 0 8px #74ff74;animation:blink 1.05s steps(1,end) infinite}
+  @keyframes blink{50%{opacity:0}}
+  @media (max-width:560px){.term{padding:30px 14px 70px;font-size:15px}}
+</style>
+</head>
+<body>
+
+<canvas id="matrix" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- Black snake with transparent background; centred & fixed -->
+<img src="snake.png" alt="Snake Logo" class="snake-logo">
+
+<main class="term" role="main">
+  <div class="prompt">The Lady Snake has you...</div>
+  <br>
+  <div class="prompt">Follow the black snake.<span class="caret" aria-hidden="true"></span></div><br>
+  <ul id="links" class="links" aria-live="polite"></ul>
+</main>
+
+<script>
+/* ===== Links (unchanged order) ===== */
+const LINKS = [
+  { label: "Therapy Talks Interview with The Lady Snake", url: "https://youtu.be/hw9MsA32EoQ" },
+  { label: "Exotico TV Interview with The Lady Snake", url: "https://m.youtube.com/watch?v=cy7IRz9OtX0" },
+  { label: "TattooGenda Interview with The Lady Snake", url: "https://tattoogenda.com/artist-interviews/the-lady-snake-chronicles-a-tale-of-tattoos-and-triumph/?fbclid=PAAaaQgAD1oYGnth7ESXp3mjJ5e8JJHla4guYM2GqFMFxLGqT4zeGKwf0SsdQ_aem_AZHpMHTKaT4avDKfg2Itfw2hmFiln5V1YQdBs4PfVLZrcdcMpaCp9g-q4W8acqrnBAE" },
+  { label: "The Lady Snake Live Set in Therapy Cube #029", url: "https://youtu.be/r8N16T-6WQQ" },
+  { label: "Instagram", url: "https://instagram.com/theladysnakedj" },
+  { label: "TikTok", url: "https://www.tiktok.com/@theladysnakedj" },
+  { label: "YouTube", url: "https://youtube.com/@theladysnakedj" },
+  { label: "SoundCloud", url: "https://soundcloud.com/theladysnake" },
+  { label: "Threads", url: "https://www.threads.net/@theladysnakedj" },
+  { label: "Telegram [Alexa’s World]", url: "https://t.me/+1s0i3sLZxnE0MGE0" },
+  { label: "The Lady Snake's Official Wishlist", url: "https://wishlistpage.com/Ladysnake" }
+];
+const list = document.getElementById('links');
+function addLink(item, i){
+  const li = document.createElement('li');
+  li.className = 'cmd';
+  li.style.animationDelay = `${i*300}ms`;
+  li.innerHTML = `<span class="arrow">&gt;</span> <a href="${item.url}" target="_blank" rel="noopener">${item.label}</a>`;
+  list.appendChild(li);
+  requestAnimationFrame(()=> li.classList.add('in'));
+}
+window.addEventListener('DOMContentLoaded', () => LINKS.forEach(addLink));
+
+/* ===== Matrix rain (baseline flow) ===== */
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+let w,h,columns,fontSize,drops=[],speeds=[],lastTime=0;
+const glyphs = "ｱｶｻﾀﾅﾊﾏﾔﾗﾜ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-*/=<>".split("");
+let TARGET_FPS = 20, FALL_MULTIPLIER = 0.75;
+
+function resize(){
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+  fontSize = Math.max(14, Math.floor(w/90));
+  columns = Math.floor(w / fontSize);
+  drops = new Array(columns).fill(0).map(()=>Math.random()*h/fontSize);
+  speeds = new Array(columns).fill(0).map(()=> 0.6 + Math.random()*0.8);
+}
+window.addEventListener('resize', resize); resize();
+
+/* === Snake glow: build an offscreen edge map matching the on-page snake === */
+const snakeImg = new Image();
+snakeImg.src = "snake.png";
+const maskCvs = document.createElement('canvas');
+const maskCtx = maskCvs.getContext('2d', { willReadFrequently:true });
+let edgeData = null, maskReady = false;
+
+function rebuildSnakeMask(){
+  if(!snakeImg.naturalWidth) return;
+  maskCvs.width = w; maskCvs.height = h;
+  maskCtx.clearRect(0,0,w,h);
+  // Match CSS sizing: max 80vw/80vh then scale(0.95), centred
+  const maxW = 0.8 * window.innerWidth;
+  const maxH = 0.8 * window.innerHeight;
+  const scale = 0.95 * Math.min(maxW / snakeImg.naturalWidth, maxH / snakeImg.naturalHeight);
+  const drawW = snakeImg.naturalWidth * scale;
+  const drawH = snakeImg.naturalHeight * scale;
+  const dx = (w - drawW) / 2;
+  const dy = (h - drawH) / 2;
+  maskCtx.drawImage(snakeImg, dx, dy, drawW, drawH);
+
+  // Get alpha channel & compute 1px outline (edge = black->transparent boundary)
+  const img = maskCtx.getImageData(0,0,w,h);
+  const a = img.data; // RGBA
+  const edge = new Uint8Array(w*h);
+  const idx = (x,y)=>((y*w+x)<<2)+3;
+
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const inside = a[idx(x,y)]>8;
+      if(!inside) continue;
+      // If any 4-neighbour is transparent, mark as edge
+      if(a[idx(x-1,y)]<8 || a[idx(x+1,y)]<8 || a[idx(x,y-1)]<8 || a[idx(x,y+1)]<8){
+        edge[y*w+x]=1;
+      }
+    }
+  }
+  edgeData = edge; maskReady = true;
+}
+snakeImg.onload = rebuildSnakeMask;
+window.addEventListener('resize', rebuildSnakeMask);
+
+/* Helper: is this point near the snake outline? */
+function nearSnakeEdge(px,py){
+  if(!maskReady) return false;
+  const x = px|0, y = py|0;
+  if(x<1||y<1||x>=w-1||y>=h-1) return false;
+  // Check a tiny radius (3x3) for a brief “hit”
+  const r = 1;
+  for(let oy=-r; oy<=r; oy++){
+    const yy = y+oy; const base = yy*w;
+    for(let ox=-r; ox<=r; ox++){
+      if(edgeData[base + (x+ox)]) return true;
+    }
+  }
+  return false;
+}
+
+function drawFrame(){
+  ctx.fillStyle = "rgba(0, 10, 0, 0.18)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = `${fontSize}px ${getComputedStyle(document.body).fontFamily}`;
+
+  for(let i=0;i<columns;i++){
+    const x = i*fontSize + (fontSize*0.1);
+    const y = drops[i]*fontSize;
+    const ch = glyphs[(Math.random()*glyphs.length)|0];
+
+    /* === Snake glow trigger: brief backlight at outline === */
+    if(nearSnakeEdge(x, y)){
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = 'rgba(134,230,140,0.7)'; // soft green
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = 'rgba(134,230,140,0.25)';
+      ctx.beginPath();
+      ctx.arc(x, y - fontSize*0.6, 3, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.fillStyle = (Math.random()<0.02) ? "#aaffb0" : "#33d24d";
+    ctx.fillText(ch, x, y);
+
+    drops[i] += speeds[i] * FALL_MULTIPLIER;
+    speeds[i] = Math.min(1.25, speeds[i] + 0.006);
+    if(y > h && Math.random() > 0.975){ drops[i] = 0; speeds[i] = 0.6 + Math.random()*0.5; }
+  }
+}
+
+function loop(now){
+  const interval = 1000 / TARGET_FPS;
+  if(!lastTime) lastTime = now;
+  const elapsed = now - lastTime;
+  if(elapsed >= interval){ lastTime = now - (elapsed % interval); drawFrame(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* Speed hotkeys */
+document.addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(k==='r') TARGET_FPS = Math.max(6, TARGET_FPS-2);
+  if(k==='f') TARGET_FPS = Math.min(30, TARGET_FPS+2);
+});
+</script>
+</body>
+</html>
