@@ -1,0 +1,38 @@
+name: Update Links Cache
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"  # Every 2 hours
+  workflow_dispatch:       # Allow manual trigger
+
+jobs:
+  update-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Google Sheet and update cache
+        run: |
+          curl -s "https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/gviz/tq?tqx=out:json" \
+          | sed 's/^[^{]*//' | sed 's/;*$//' \
+          | node -e '
+              let raw = "";
+              process.stdin.on("data", chunk => raw += chunk);
+              process.stdin.on("end", () => {
+                let json = JSON.parse(raw);
+                let data = json.table.rows.map(row => ({
+                  label: row.c[0]?.v || "",
+                  url: row.c[1]?.v || ""
+                })).filter(item => item.label && item.url);
+                require("fs").writeFileSync("links-cache.json", JSON.stringify(data, null, 2));
+              });
+            '
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add links-cache.json
+          git commit -m "Update links cache" || echo "No changes"
+          git push
