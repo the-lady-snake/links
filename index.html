@@ -22,20 +22,19 @@
   }
   .vignette{position:fixed;inset:0;pointer-events:none;z-index:0;mix-blend-mode:multiply}
 
-  /* 2) Snake above rain, below links (so rain disappears behind it) */
+  /* 2) Snake above rain, below links */
   .snake-logo{
     filter: drop-shadow(0 0 4px rgba(134, 230, 140, 0.3));
-    opacity: 0.8; /* Remove this if snake is too light */
+    opacity: 0.8;
     position:fixed; top:50%; left:50%;
-    transform:translate(-50%,-50%) scale(0.95); /* 5% smaller */
+    transform:translate(-50%,-50%) scale(0.95);
     transform-origin:center;
-    z-index:1;                 /* <-- sits between rain and links */
-    pointer-events:none;       /* links remain clickable */
-    width:auto; height:auto;
-    max-width:80vw; max-height:80vh; /* mobile friendly, with space around */
+    z-index:1;
+    pointer-events:none;
+    max-width:80vw; max-height:80vh;
     image-rendering:auto;
-    opacity:1;                 /* ensure fully opaque black */
-    filter:none;               /* no colourisation */
+    opacity:1;
+    filter:none;
   }
 
   /* 3) Links on top */
@@ -43,7 +42,6 @@
   .prompt{color:var(--accent);text-shadow:0 0 6px #0f0}
   .muted{color:#6fae72}
 
-  /* Link list (dropdown-style cascade) */
   .links{margin:14px 0 0 0; list-style:none; padding:0}
   .cmd{display:flex; gap:.6rem; margin:10px 0; line-height:1.7; opacity:0; transform:translateY(-12px)}
   .cmd .arrow{color:var(--text)}
@@ -64,7 +62,6 @@
 <canvas id="matrix" aria-hidden="true"></canvas>
 <div class="vignette" aria-hidden="true"></div>
 
-<!-- Black snake with transparent background; centred & fixed -->
 <img src="snake.png" alt="Snake Logo" class="snake-logo">
 
 <main class="term" role="main">
@@ -74,82 +71,44 @@
   <ul id="links" class="links" aria-live="polite"></ul>
 </main>
 
-<script src="links.js"></script> <!-- Last-resort fallback -->
+<!-- Last-resort fallback -->
+<script src="links.js"></script>
 
 <script>
-const CACHE_KEY = 'ladySnakeLinks';
-const CACHE_TIME_KEY = 'ladySnakeLinksTime';
-const REFRESH_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+let LINKS = window.LINKS || []; // Safe declaration
 
-async function fetchFromSheets() {
-  const url = 'https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/gviz/tq?tqx=out:json';
-  const response = await fetch(url);
-  const text = await response.text();
-  const json = JSON.parse(text.substring(47, text.length - 2)); // Remove Google Sheets JSON padding
-  return json.table.rows.map(row => ({
-    label: row.c[0]?.v || '',
-    url: row.c[1]?.v || ''
-  })).filter(item => item.label && item.url);
+async function fetchFromCache() {
+  const response = await fetch('links-cache.json');
+  if (!response.ok) throw new Error("Cache fetch failed");
+  return await response.json();
 }
 
 function loadLinks() {
   const list = document.getElementById('links');
-  function addLink(item, i){
+  list.innerHTML = '';
+  LINKS.forEach((item, i) => {
     const li = document.createElement('li');
     li.className = 'cmd';
     li.style.animationDelay = `${i*300}ms`;
     li.innerHTML = `<span class="arrow">&gt;</span> <a href="${item.url}" target="_blank" rel="noopener">${item.label}</a>`;
     list.appendChild(li);
     requestAnimationFrame(()=> li.classList.add('in'));
-  }
-  LINKS.forEach(addLink);
+  });
 }
 
 (async function initLinks() {
-  let cached = localStorage.getItem(CACHE_KEY);
-  let cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-  let now = Date.now();
-
-  if (cached) {
-    try {
-      LINKS = JSON.parse(cached);
-      loadLinks();
-    } catch (e) {
-      console.warn('Cache parse failed:', e);
-      LINKS = [];
-    }
-  } else {
-    LINKS = []; // Will be filled by Sheets or fallback
-  }
-
-  let shouldRefresh = !cachedTime || (now - parseInt(cachedTime, 10)) > REFRESH_INTERVAL_MS;
-
-  if (shouldRefresh) {
-    try {
-      let freshLinks = await fetchFromSheets();
-      if (freshLinks.length) {
-        LINKS = freshLinks;
-        localStorage.setItem(CACHE_KEY, JSON.stringify(freshLinks));
-        localStorage.setItem(CACHE_TIME_KEY, now.toString());
-        document.getElementById('links').innerHTML = ''; // Clear old list
-        loadLinks();
-        return;
-      }
-    } catch (err) {
-      console.warn('Google Sheets fetch failed:', err);
-    }
-  }
-
-  // Final fallback: use links.js if no cache at all
-  if (!LINKS.length) {
-    console.warn('Using links.js fallback');
+  try {
+    LINKS = await fetchFromCache();
     loadLinks();
+  } catch (err) {
+    console.warn('Cache load failed, using links.js fallback', err);
+    loadLinks(); // uses LINKS from links.js
   }
 })();
 </script>
 
 <script>
-/* ===== Matrix rain (baseline flow) ===== */
+/* ===== Matrix rain ===== */
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
 let w,h,columns,fontSize,drops=[],speeds=[],lastTime=0;
@@ -166,7 +125,7 @@ function resize(){
 }
 window.addEventListener('resize', resize); resize();
 
-/* === Snake glow: build an offscreen edge map matching the on-page snake === */
+/* Snake glow */
 const snakeImg = new Image();
 snakeImg.src = "snake.png";
 const maskCvs = document.createElement('canvas');
@@ -177,7 +136,6 @@ function rebuildSnakeMask(){
   if(!snakeImg.naturalWidth) return;
   maskCvs.width = w; maskCvs.height = h;
   maskCtx.clearRect(0,0,w,h);
-  // Match CSS sizing: max 80vw/80vh then scale(0.95), centred
   const maxW = 0.8 * window.innerWidth;
   const maxH = 0.8 * window.innerHeight;
   const scale = 0.95 * Math.min(maxW / snakeImg.naturalWidth, maxH / snakeImg.naturalHeight);
@@ -187,9 +145,8 @@ function rebuildSnakeMask(){
   const dy = (h - drawH) / 2;
   maskCtx.drawImage(snakeImg, dx, dy, drawW, drawH);
 
-  // Get alpha channel & compute 1px outline (edge = black->transparent boundary)
   const img = maskCtx.getImageData(0,0,w,h);
-  const a = img.data; // RGBA
+  const a = img.data;
   const edge = new Uint8Array(w*h);
   const idx = (x,y)=>((y*w+x)<<2)+3;
 
@@ -197,7 +154,6 @@ function rebuildSnakeMask(){
     for(let x=1;x<w-1;x++){
       const inside = a[idx(x,y)]>8;
       if(!inside) continue;
-      // If any 4-neighbour is transparent, mark as edge
       if(a[idx(x-1,y)]<8 || a[idx(x+1,y)]<8 || a[idx(x,y-1)]<8 || a[idx(x,y+1)]<8){
         edge[y*w+x]=1;
       }
@@ -208,12 +164,10 @@ function rebuildSnakeMask(){
 snakeImg.onload = rebuildSnakeMask;
 window.addEventListener('resize', rebuildSnakeMask);
 
-/* Helper: is this point near the snake outline? */
 function nearSnakeEdge(px,py){
   if(!maskReady) return false;
   const x = px|0, y = py|0;
   if(x<1||y<1||x>=w-1||y>=h-1) return false;
-  // Check a tiny radius (3x3) for a brief “hit”
   const r = 1;
   for(let oy=-r; oy<=r; oy++){
     const yy = y+oy; const base = yy*w;
@@ -234,11 +188,10 @@ function drawFrame(){
     const y = drops[i]*fontSize;
     const ch = glyphs[(Math.random()*glyphs.length)|0];
 
-    /* === Snake glow trigger: brief backlight at outline === */
     if(nearSnakeEdge(x, y)){
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.shadowColor = 'rgba(134,230,140,0.7)'; // soft green
+      ctx.shadowColor = 'rgba(134,230,140,0.7)';
       ctx.shadowBlur = 12;
       ctx.fillStyle = 'rgba(134,230,140,0.25)';
       ctx.beginPath();
@@ -265,7 +218,6 @@ function loop(now){
 }
 requestAnimationFrame(loop);
 
-/* Speed hotkeys */
 document.addEventListener('keydown', e=>{
   const k=e.key.toLowerCase();
   if(k==='r') TARGET_FPS = Math.max(6, TARGET_FPS-2);
@@ -274,6 +226,3 @@ document.addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
-
-
-
