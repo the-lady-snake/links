@@ -49,13 +49,6 @@
   .cmd .arrow{color:var(--text)}
   .cmd a{color:var(--accent); text-decoration:none}
   .cmd a:hover{filter:brightness(115%)}
-  /*.in{animation:drop .88s cubic-bezier(.2,.8,.2,1) forwards}
-  @keyframes drop{ to{opacity:1; transform:translateY(0)} } */
-  /*.in{animation:dropStep 0.9s steps(5,end) forwards}
-@keyframes dropStep{
-  from{opacity:0; transform:translateY(-16px)}
-  to  {opacity:1; transform:translateY(0)}
-}*/
   .in{animation:fadeRow 0.5s ease-out forwards}
   @keyframes fadeRow{
     from{opacity:0}
@@ -81,34 +74,81 @@
   <ul id="links" class="links" aria-live="polite"></ul>
 </main>
 
-<script src="links.js"></script>
-  
-<script>
-/* ===== Links (unchanged order) ===== 
-const LINKS = [
-  { label: "Therapy Talks Interview", url: "https://youtu.be/hw9MsA32EoQ" },
-  { label: "Exotico TV Interview", url: "https://m.youtube.com/watch?v=cy7IRz9OtX0" },
-  { label: "TattooGenda Interview", url: "https://tattoogenda.com/artist-interviews/the-lady-snake-chronicles-a-tale-of-tattoos-and-triumph/?fbclid=PAAaaQgAD1oYGnth7ESXp3mjJ5e8JJHla4guYM2GqFMFxLGqT4zeGKwf0SsdQ_aem_AZHpMHTKaT4avDKfg2Itfw2hmFiln5V1YQdBs4PfVLZrcdcMpaCp9g-q4W8acqrnBAE" },
-  { label: "Live Set - Therapy Cube #029", url: "https://youtu.be/r8N16T-6WQQ" },
-  { label: "Instagram", url: "https://instagram.com/theladysnakedj" },
-  { label: "TikTok", url: "https://www.tiktok.com/@theladysnakedj" },
-  { label: "YouTube", url: "https://youtube.com/@theladysnakedj" },
-  { label: "SoundCloud", url: "https://soundcloud.com/theladysnake" },
-  { label: "Threads", url: "https://www.threads.net/@theladysnakedj" },
-  { label: "Telegram [Alexa’s World]", url: "https://t.me/+1s0i3sLZxnE0MGE0" },
-  { label: "The Lady Snake's Official Wishlist", url: "https://wishlistpage.com/Ladysnake" }
-];*/
-const list = document.getElementById('links');
-function addLink(item, i){
-  const li = document.createElement('li');
-  li.className = 'cmd';
-  li.style.animationDelay = `${i*300}ms`;
-  li.innerHTML = `<span class="arrow">&gt;</span> <a href="${item.url}" target="_blank" rel="noopener">${item.label}</a>`;
-  list.appendChild(li);
-  requestAnimationFrame(()=> li.classList.add('in'));
-}
-window.addEventListener('DOMContentLoaded', () => LINKS.forEach(addLink));
+<script src="links.js"></script> <!-- Last-resort fallback -->
 
+<script>
+const CACHE_KEY = 'ladySnakeLinks';
+const CACHE_TIME_KEY = 'ladySnakeLinksTime';
+const REFRESH_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+async function fetchFromSheets() {
+  const url = 'https://docs.google.com/spreadsheets/d/100MLUiSxyYpUfBhBM9hnqNd8EVXc4A4d2vZCkMVGoE4/gviz/tq?tqx=out:json';
+  const response = await fetch(url);
+  const text = await response.text();
+  const json = JSON.parse(text.substring(47, text.length - 2)); // Remove Google Sheets JSON padding
+  return json.table.rows.map(row => ({
+    label: row.c[0]?.v || '',
+    url: row.c[1]?.v || ''
+  })).filter(item => item.label && item.url);
+}
+
+function loadLinks() {
+  const list = document.getElementById('links');
+  function addLink(item, i){
+    const li = document.createElement('li');
+    li.className = 'cmd';
+    li.style.animationDelay = `${i*300}ms`;
+    li.innerHTML = `<span class="arrow">&gt;</span> <a href="${item.url}" target="_blank" rel="noopener">${item.label}</a>`;
+    list.appendChild(li);
+    requestAnimationFrame(()=> li.classList.add('in'));
+  }
+  LINKS.forEach(addLink);
+}
+
+(async function initLinks() {
+  let cached = localStorage.getItem(CACHE_KEY);
+  let cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+  let now = Date.now();
+
+  if (cached) {
+    try {
+      LINKS = JSON.parse(cached);
+      loadLinks();
+    } catch (e) {
+      console.warn('Cache parse failed:', e);
+      LINKS = [];
+    }
+  } else {
+    LINKS = []; // Will be filled by Sheets or fallback
+  }
+
+  let shouldRefresh = !cachedTime || (now - parseInt(cachedTime, 10)) > REFRESH_INTERVAL_MS;
+
+  if (shouldRefresh) {
+    try {
+      let freshLinks = await fetchFromSheets();
+      if (freshLinks.length) {
+        LINKS = freshLinks;
+        localStorage.setItem(CACHE_KEY, JSON.stringify(freshLinks));
+        localStorage.setItem(CACHE_TIME_KEY, now.toString());
+        document.getElementById('links').innerHTML = ''; // Clear old list
+        loadLinks();
+        return;
+      }
+    } catch (err) {
+      console.warn('Google Sheets fetch failed:', err);
+    }
+  }
+
+  // Final fallback: use links.js if no cache at all
+  if (!LINKS.length) {
+    console.warn('Using links.js fallback');
+    loadLinks();
+  }
+})();
+</script>
+
+<script>
 /* ===== Matrix rain (baseline flow) ===== */
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
@@ -234,5 +274,6 @@ document.addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
+
 
 
