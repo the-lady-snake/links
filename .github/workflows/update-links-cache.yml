@@ -10,8 +10,7 @@ permissions:
 
 env:
   # ✅ CSV export URL for your sheet (add gid=... if your data is not on the first tab)
-  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrWLLBApgslTFl4TalZSOJy91QGwlHQDppm0fHsUUePcnOFoYBAU_2qCGutwlhkgOrhZmYW27AtGl0/pub?gid=0&single=true&output=csv
-"
+  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrWLLBApgslTFl4TalZSOJy91QGwlHQDppm0fHsUUePcnOFoYBAU_2qCGutwlhkgOrhZmYW27AtGl0/pub?gid=0&single=true&output=csv"
 
 jobs:
   update-cache:
