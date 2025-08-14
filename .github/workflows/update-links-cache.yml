@@ -102,12 +102,12 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          if git diff --quiet links/links-cache.json; then
+          if git diff --quiet links-cache.json; then
             echo "No changes to commit."
           else
             git config user.name  "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add links/links-cache.json
+            git add links-cache.json
             git commit -m "Update links cache from Google Sheets (CSV)"
             git push
           fi
