@@ -95,10 +95,9 @@ jobs:
             process.exit(1);
           }
 
-          // Ensure /links exists and write JSON
-          fs.mkdirSync('links', { recursive: true });
-          fs.writeFileSync('links/links-cache.json', JSON.stringify(data, null, 2));
-          console.log('Wrote links/links-cache.json with', data.length, 'items');
+          // Write JSON to repo root
+          fs.writeFileSync('links-cache.json', JSON.stringify(data, null, 2));
+          console.log('Wrote links-cache.json with', data.length, 'items');
           NODE
 
       - name: Commit and push if changed
