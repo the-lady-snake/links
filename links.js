@@ -1,14 +1,35 @@
 // links.js
 window.LINKS = [
-  { label: "Therapy Talks Interview", url: "https://youtu.be/hw9MsA32EoQ" },
-  { label: "Exotico TV Interview", url: "https://m.youtube.com/watch?v=cy7IRz9OtX0" },
-  { label: "TattooGenda Interview", url: "https://tattoogenda.com/artist-interviews/the-lady-snake-chronicles-a-tale-of-tattoos-and-triumph/?fbclid=PAAaaQgAD1oYGnth7ESXp3mjJ5e8JJHla4guYM2GqFMFxLGqT4zeGKwf0SsdQ_aem_AZHpMHTKaT4avDKfg2Itfw2hmFiln5V1YQdBs4PfVLZrcdcMpaCp9g-q4W8acqrnBAE" },
-  { label: "Live Set - Therapy Cube #029", url: "https://youtu.be/r8N16T-6WQQ" },
-  { label: "Instagram", url: "https://instagram.com/theladysnakedj" },
-  { label: "TikTok", url: "https://www.tiktok.com/@theladysnakedj" },
-  { label: "YouTube", url: "https://youtube.com/@theladysnakedj" },
-  { label: "SoundCloud", url: "https://soundcloud.com/theladysnake" },
-  { label: "Threads", url: "https://www.threads.net/@theladysnakedj" },
-  { label: "Telegram [Alexa’s World]", url: "https://t.me/+1s0i3sLZxnE0MGE0" },
-  { label: "The Lady Snake's Official Wishlist", url: "https://wishlistpage.com/Ladysnake" }
+  {
+    "label": "Therapy Talks Interview",
+    "url": "https://youtu.be/hw9MsA32EoQ"
+  },
+  {
+    "label": "TattooGenda Interview",
+    "url": "https://tattoogenda.com/artist-interviews/the-lady-snake-chronicles-a-tale-of-tattoos-and-triumph/?fbclid=PAAaaQgAD1oYGnth7ESXp3mjJ5e8JJHla4guYM2GqFMFxLGqT4zeGKwf0SsdQ_aem_AZHpMHTKaT4avDKfg2Itfw2hmFiln5V1YQdBs4PfVLZrcdcMpaCp9g-q4W8acqrnBAE"
+  },
+  {
+    "label": "Live Set - Therapy Cube #029",
+    "url": "https://youtu.be/r8N16T-6WQQ"
+  },
+  {
+    "label": "Instagram",
+    "url": "https://instagram.com/theladysnakedj"
+  },
+  {
+    "label": "TikTok",
+    "url": "https://www.tiktok.com/@theladysnakedj"
+  },
+  {
+    "label": "Threads",
+    "url": "https://www.threads.net/@theladysnakedj"
+  },
+  {
+    "label": "YouTube",
+    "url": "https://youtube.com/@theladysnakedj"
+  },
+  {
+    "label": "SoundCloud",
+    "url": "https://soundcloud.com/theladysnake"
+  }
 ];
