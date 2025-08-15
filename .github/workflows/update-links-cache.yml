@@ -3,10 +3,23 @@ name: Update Links Cache (CSV only)
 on:
   workflow_dispatch:         # allow manual run
   schedule:
-    - cron: "0 */2 * * *"    # every 2 hours
+    # PEAK (CET 11:30–03:30) using fixed CET=UTC+1 => UTC 10:30–02:30
+    # Start partial hour (UTC 10:30, 10:50)
+    - cron: "30,50 10 * * *"
+    # Full peak hours (UTC 11:00–01:59) at :10,:30,:50 (20-min cadence aligned to :30)
+    - cron: "10,30,50 11-23,0-1 * * *"
+    # End partial hour (UTC 02:10, 02:30)
+    - cron: "10,30 2 * * *"
+
+    # OFF-PEAK every 2 hours during UTC 03:00–10:00 (i.e., CET 04:00–11:00)
+    - cron: "0 4,6,8,10 * * *"
 
 permissions:
   contents: write
+
+concurrency:
+  group: cache-updater
+  cancel-in-progress: true
 
 env:
   # ✅ CSV export URL for your sheet (add gid=... if your data is not on the first tab)
@@ -30,7 +43,7 @@ jobs:
           head -n 5 /tmp/sheet.csv || true
           echo "==== File size (bytes) ===="
           wc -c /tmp/sheet.csv
-    
+
       - name: Convert CSV → JSON (robust parser)
         run: |
           node - <<'NODE'
